@@ -29,7 +29,8 @@ class RegisterView(APIView):
 	def post(self, request):
 		serializer = RegisterSerializer(data=request.data)
 		if not serializer.is_valid():
-			return error_response("Validation error", serializer.errors, status.HTTP_400_BAD_REQUEST)
+			message = "Email already registered." if "email" in serializer.errors else "Validation error"
+			return error_response(message, serializer.errors, status.HTTP_400_BAD_REQUEST)
 
 		user = serializer.save()
 		data = ProfileSerializer(user).data

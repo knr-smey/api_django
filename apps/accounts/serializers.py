@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
@@ -16,8 +17,13 @@ class RegisterSerializer(serializers.Serializer):
 	last_name = serializers.CharField(required=False, allow_blank=True)
 
 	def validate_email(self, value: str) -> str:
-		validate_email_address(value)
-		return value.lower()
+		email = value.strip().lower()
+		validate_email_address(email)
+
+		if User.objects.filter(email__iexact=email).exists():
+			raise serializers.ValidationError("Email already exists.")
+
+		return email
 
 	def validate_password(self, value: str) -> str:
 		validate_password_strength(value)
@@ -36,8 +42,8 @@ class RegisterSerializer(serializers.Serializer):
 				first_name=validated_data.get("first_name", ""),
 				last_name=validated_data.get("last_name", ""),
 			)
-		except Exception as exc:
-			raise serializers.ValidationError(str(exc)) from exc
+		except DjangoValidationError as exc:
+			raise serializers.ValidationError({"email": ["Email already exists."]}) from exc
 
 
 class LoginSerializer(serializers.Serializer):
