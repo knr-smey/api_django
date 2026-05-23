@@ -1,10 +1,11 @@
 from datetime import timedelta
 
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
 
+from rest_framework_simplejwt.tokens import RefreshToken
 from apps.accounts.permissions import IsAuthenticatedAndActive
 from apps.accounts.security import (
 	FAILED_LOGIN_WINDOW,
@@ -157,40 +158,28 @@ class RefreshView(APIView):
 
 
 class LogoutView(APIView):
-	permission_classes = [IsAuthenticatedAndActive]
+    permission_classes = [IsAuthenticated]
 
-	def post(self, request):
+    def post(self, request):
 
-		serializer = LogoutSerializer(data=request.data)
+        try:
+            refresh_token = request.data.get("refresh")
 
-		if not serializer.is_valid():
+            token = RefreshToken(refresh_token)
 
-			return error_response(
-				"Logout failed",
-				serializer.errors,
-				status.HTTP_400_BAD_REQUEST
-			)
+            token.blacklist()
 
-		try:
+            return success_response(
+                {},
+                "Logout successful",
+                status.HTTP_200_OK
+            )
 
-			refresh = RefreshToken(
-				serializer.validated_data["refresh"]
-			)
-
-			refresh.blacklist()
-
-		except Exception:
-
-			return error_response(
-				"Invalid refresh token",
-				status_code=status.HTTP_400_BAD_REQUEST
-			)
-
-		return success_response(
-			message="Logout successful",
-			status_code=status.HTTP_200_OK
-		)
-
+        except Exception:
+            return error_response(
+                "Logout failed",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
 
 class ProfileView(APIView):
 	permission_classes = [IsAuthenticatedAndActive]
