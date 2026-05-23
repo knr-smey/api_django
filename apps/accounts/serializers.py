@@ -90,5 +90,8 @@ class ProfileSerializer(serializers.ModelSerializer):
 		fields = ("id", "email", "first_name", "last_name", "is_active", "date_joined")
 
 class ChatSerializer(serializers.Serializer):
-    session_id = serializers.UUIDField(required=False)
+    ssession_id = serializers.UUIDField(
+		required=False,
+		allow_null=True
+	)
     message = serializers.CharField()

@@ -1,8 +1,9 @@
-from rest_framework.permissions import (
-    IsAuthenticated,
-)
-
 from rest_framework.views import APIView
+from rest_framework.response import Response
+
+from apps.accounts.permissions import (
+    IsAuthenticatedAndActive,
+)
 
 from apps.accounts.models import (
     ChatSession,
@@ -33,80 +34,112 @@ from utils.responses import (
 class ChatAPIView(APIView):
 
     permission_classes = [
-        IsAuthenticated
+        IsAuthenticatedAndActive
     ]
 
     def post(self, request):
 
-        serializer = ChatSerializer(
-            data=request.data
-        )
+        try:
 
-        serializer.is_valid(
-            raise_exception=True
-        )
+            serializer = ChatSerializer(
+                data=request.data
+            )
 
-        message = serializer.validated_data[
-            "message"
-        ]
+            serializer.is_valid(
+                raise_exception=True
+            )
 
-        session_id = serializer.validated_data.get(
-            "session_id"
-        )
+            message = serializer.validated_data[
+                "message"
+            ]
 
-        # CREATE SESSION
-        if not session_id:
+            session_id = serializer.validated_data.get(
+                "session_id"
+            )
 
-            session = create_chat_session(
+            # CREATE OR LOAD SESSION
+            if not session_id:
+
+                session = create_chat_session(
+                    request.user,
+                    message[:30]
+                )
+
+            else:
+
+                try:
+
+                    session = ChatSession.objects.get(
+                        id=session_id,
+                        user=request.user
+                    )
+
+                except ChatSession.DoesNotExist:
+
+                    session = create_chat_session(
+                        request.user,
+                        message[:30]
+                    )
+
+            # SAVE USER MESSAGE
+            save_message(
                 request.user,
-                message[:30]
+                session,
+                "user",
+                message
             )
 
-        else:
-
-            session = ChatSession.objects.get(
-                id=session_id,
-                user=request.user
+            # LOAD HISTORY
+            history = get_chat_history(
+                session
             )
 
-        # SAVE USER MESSAGE
-        save_message(
-            request.user,
-            session,
-            "user",
-            message
-        )
+            # BUILD CONVERSATION
+            conversation = []
 
-        # LOAD CHAT HISTORY
-        history = get_chat_history(
-            session
-        )
+            for item in history:
 
-        # BUILD PROMPT
-        prompt = ""
+                role = (
+                    "User"
+                    if item.role == "user"
+                    else "Assistant"
+                )
 
-        for item in history:
+                conversation.append(
+                    f"{role}: {item.content}"
+                )
 
-            prompt += (
-                f"{item.role}: "
-                f"{item.content}\n"
+            prompt = "\n\n".join(
+                conversation
             )
 
-        # ASK AI
-        ai_reply = ask_ai(prompt)
+            # ASK AI
+            ai_reply = ask_ai(prompt)
 
-        # SAVE AI RESPONSE
-        save_message(
-            request.user,
-            session,
-            "assistant",
-            ai_reply
-        )
+            # SAVE AI RESPONSE
+            save_message(
+                request.user,
+                session,
+                "assistant",
+                ai_reply
+            )
 
-        return success_response(
-            {
-                "session_id": str(session.id),
-                "response": ai_reply,
-            },
-            "Chat response generated"
-        )
+            return success_response(
+                {
+                    "session_id": str(session.id),
+                    "response": ai_reply,
+                },
+                "Chat response generated"
+            )
+
+        except Exception as e:
+
+            print("CHAT ERROR:", e)
+
+            return Response(
+                {
+                    "success": False,
+                    "message": str(e)
+                },
+                status=500
+            )
