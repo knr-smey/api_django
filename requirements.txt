@@ -7,3 +7,4 @@ django-cors-headers>=4.4,<5.0
 dj-rest-auth>=6.0,<7.0
 django-allauth>=0.63,<1.0
 cryptography>=42.0,<45.0
+django-redis>=5.4,<6.0

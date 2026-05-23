@@ -4,6 +4,13 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.permissions import IsAuthenticatedAndActive
+from apps.accounts.security import (
+	FAILED_LOGIN_WINDOW,
+	clear_failed_login,
+	get_client_ip,
+	is_login_blocked,
+	record_failed_login,
+)
 from apps.accounts.serializers import (
 	LoginSerializer,
 	LogoutSerializer,
@@ -11,11 +18,13 @@ from apps.accounts.serializers import (
 	RefreshSerializer,
 	RegisterSerializer,
 )
+from apps.accounts.throttles import LoginRateThrottle, RefreshRateThrottle, RegisterRateThrottle
 from utils.responses import error_response, success_response
 
 
 class RegisterView(APIView):
 	permission_classes = [AllowAny]
+	throttle_classes = [RegisterRateThrottle]
 
 	def post(self, request):
 		serializer = RegisterSerializer(data=request.data)
@@ -29,13 +38,28 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
 	permission_classes = [AllowAny]
+	throttle_classes = [LoginRateThrottle]
 
 	def post(self, request):
+		email = request.data.get("email", "")
+		ip_address = get_client_ip(request)
+		if email and is_login_blocked(ip_address, email):
+			response = error_response(
+				"Too many requests. Please try again later.",
+				status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+			)
+			response["Retry-After"] = str(FAILED_LOGIN_WINDOW)
+			return response
+
 		serializer = LoginSerializer(data=request.data)
 		if not serializer.is_valid():
-			return error_response("Login failed", serializer.errors, status.HTTP_400_BAD_REQUEST)
+			if email:
+				record_failed_login(ip_address, email)
+			return error_response("Invalid email or password.", status_code=status.HTTP_400_BAD_REQUEST)
 
 		validated = serializer.validated_data
+		if email:
+			clear_failed_login(ip_address, email)
 		response_data = {
 			"user": ProfileSerializer(validated["user"]).data,
 			"tokens": validated["tokens"],
@@ -45,11 +69,12 @@ class LoginView(APIView):
 
 class RefreshView(APIView):
 	permission_classes = [AllowAny]
+	throttle_classes = [RefreshRateThrottle]
 
 	def post(self, request):
 		serializer = RefreshSerializer(data=request.data)
 		if not serializer.is_valid():
-			return error_response("Token refresh failed", serializer.errors, status.HTTP_400_BAD_REQUEST)
+			return error_response("Invalid refresh token.", status_code=status.HTTP_400_BAD_REQUEST)
 
 		return success_response(serializer.validated_data, "Token refreshed", status.HTTP_200_OK)
 

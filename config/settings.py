@@ -64,6 +64,7 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.accounts.middleware.SuspiciousRequestMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -146,6 +147,21 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "apps.accounts.throttles.BurstRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "30/minute",
+        "user": "100/minute",
+        "burst": "100/minute",
+        "login": "5/minute",
+        "register": "3/minute",
+        "refresh": "10/minute",
+    },
+    "EXCEPTION_HANDLER": "utils.exceptions.custom_exception_handler",
+    "NUM_PROXIES": int(os.getenv("DRF_NUM_PROXIES", "0")),
 }
 
 SIMPLE_JWT = {
@@ -181,6 +197,63 @@ SOCIALACCOUNT_PROVIDERS = {
             "key": "",
         },
     }
+}
+
+REDIS_URL = os.getenv("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "IGNORE_EXCEPTIONS": True,
+            },
+            "KEY_PREFIX": os.getenv("CACHE_KEY_PREFIX", "backend"),
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "backend-ratelimit-cache",
+        }
+    }
+
+FAILED_LOGIN_LIMIT = int(os.getenv("FAILED_LOGIN_LIMIT", "5"))
+FAILED_LOGIN_WINDOW = int(os.getenv("FAILED_LOGIN_WINDOW", "900"))
+SUSPICIOUS_IP_THRESHOLD = int(os.getenv("SUSPICIOUS_IP_THRESHOLD", "20"))
+SUSPICIOUS_IP_WINDOW = int(os.getenv("SUSPICIOUS_IP_WINDOW", "600"))
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+        "security_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "security.log",
+            "maxBytes": 1024 * 1024 * 5,
+            "backupCount": 5,
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "security": {
+            "handlers": ["console", "security_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
 }
 
 

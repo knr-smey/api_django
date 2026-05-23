@@ -51,7 +51,7 @@ class LoginSerializer(serializers.Serializer):
 		if not user:
 			raise serializers.ValidationError("Invalid credentials.")
 		if not user.is_active:
-			raise serializers.ValidationError("User account is disabled.")
+			raise serializers.ValidationError("Invalid credentials.")
 
 		tokens = issue_tokens(user)
 		return {
