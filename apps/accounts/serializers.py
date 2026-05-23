@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
-from apps.accounts.services import authenticate_user, create_user, issue_tokens
+from apps.accounts.services.auth_service  import authenticate_user, create_user, issue_tokens
 from apps.accounts.validators import validate_email_address, validate_password_strength
 
 User = get_user_model()
@@ -88,3 +88,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = User
 		fields = ("id", "email", "first_name", "last_name", "is_active", "date_joined")
+
+class ChatSerializer(serializers.Serializer):
+    session_id = serializers.UUIDField(required=False)
+    message = serializers.CharField()
