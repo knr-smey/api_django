@@ -4,6 +4,7 @@ from apps.accounts.google_login import GoogleLogin
 
 from apps.accounts.views import (
     ChatAPIView,
+    ChatHistoryAPIView,
     ChatSessionAPIView,
     LoginView,
     LogoutView,
@@ -21,4 +22,5 @@ urlpatterns = [
     path("google/", GoogleLogin.as_view(), name="auth-google"),
     path("chat/", ChatAPIView.as_view(), name="auth-chat"),
     path("chat/sessions/", ChatSessionAPIView.as_view(), name="chat-sessions"),
+    path("chat/history/<uuid:session_id>/", ChatHistoryAPIView.as_view(), name="chat-history"),
 ]
