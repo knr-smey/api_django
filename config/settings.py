@@ -145,7 +145,7 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
+        "rest_framework.permissions.AllowAny",
     ),
     "DEFAULT_THROTTLE_CLASSES": (
         "rest_framework.throttling.AnonRateThrottle",
@@ -175,7 +175,9 @@ SIMPLE_JWT = {
 ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = True
 
 REST_USE_JWT = True
-
+REST_AUTH = {
+    "USE_JWT": True,
+}
 ACCOUNT_LOGIN_METHODS = {"email"}
 
 ACCOUNT_SIGNUP_FIELDS = [
@@ -184,7 +186,10 @@ ACCOUNT_SIGNUP_FIELDS = [
     "password2*",
 ]
 ACCOUNT_EMAIL_VERIFICATION = "optional"
+ACCOUNT_UNIQUE_EMAIL = True
 
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
