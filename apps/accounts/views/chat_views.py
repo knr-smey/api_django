@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -14,7 +16,7 @@ from apps.accounts.serializers import (
 )
 
 from apps.accounts.services.ai_service import (
-    ask_ai,
+    generate_ai_reply,
 )
 
 from apps.accounts.services.chat_service import (
@@ -29,6 +31,9 @@ from apps.accounts.services.history_service import (
 from utils.responses import (
     success_response,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class ChatAPIView(APIView):
@@ -94,27 +99,10 @@ class ChatAPIView(APIView):
                 session
             )
 
-            # BUILD CONVERSATION
-            conversation = []
-
-            for item in history:
-
-                role = (
-                    "User"
-                    if item.role == "user"
-                    else "Assistant"
-                )
-
-                conversation.append(
-                    f"{role}: {item.content}"
-                )
-
-            prompt = "\n\n".join(
-                conversation
-            )
-
             # ASK AI
-            ai_reply = ask_ai(prompt)
+            ai_reply = generate_ai_reply(
+                history
+            )
 
             # SAVE AI RESPONSE
             save_message(
@@ -134,7 +122,7 @@ class ChatAPIView(APIView):
 
         except Exception as e:
 
-            print("CHAT ERROR:", e)
+            logger.exception("Chat request failed")
 
             return Response(
                 {
