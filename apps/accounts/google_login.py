@@ -19,30 +19,5 @@ class GoogleLogin(SocialLoginView):
     callback_url = (
         "http://127.0.0.1:8000/accounts/google/login/callback/"
     )
-
-    def pre_social_login(
-        self,
-        request,
-        sociallogin
-    ):
-
-        email = sociallogin.user.email
-
-        if not email:
-            return
-
-        user_exists = User.objects.filter(
-            email=email
-        ).exists()
-
-        social_exists = SocialAccount.objects.filter(
-            user__email=email,
-            provider="google"
-        ).exists()
-
-        if user_exists and not social_exists:
-
-            raise ValidationError({
-                "message":
-                "Account already exists. Please sign in instead."
-            })
+    # All social-login pre-processing is handled in the allauth adapter
+    # `apps.accounts.adapter.SocialAccountAdapter.pre_social_login`.

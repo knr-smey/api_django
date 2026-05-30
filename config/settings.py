@@ -187,7 +187,7 @@ ACCOUNT_SIGNUP_FIELDS = [
 ]
 ACCOUNT_EMAIL_VERIFICATION = "optional"
 ACCOUNT_UNIQUE_EMAIL = True
-
+SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_REQUIRED = True
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_PROVIDERS = {
@@ -203,6 +203,9 @@ SOCIALACCOUNT_PROVIDERS = {
         },
     }
 }
+
+# Use custom allauth adapter to auto-link social accounts by email
+SOCIALACCOUNT_ADAPTER = "apps.accounts.adapter.SocialAccountAdapter"
 
 REDIS_URL = os.getenv("REDIS_URL", "")
 if REDIS_URL:
